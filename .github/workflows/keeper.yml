@@ -14,7 +14,7 @@ concurrency:
 jobs:
   keep:
     runs-on: ubuntu-latest
-    timeout-minutes: 3500
+    timeout-minutes: 350
     defaults:
       run:
         working-directory: keeper
