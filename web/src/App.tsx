@@ -12,6 +12,7 @@ import {
 } from './lib/markets'
 
 type Tab = 'cover' | 'mine' | 'pool' | 'how'
+const VIDEO_ID = (import.meta.env.VITE_DEMO_VIDEO_ID || '') as string
 const NAV: { label: string; items: [Tab, string][] }[] = [
   { label: 'Cover', items: [['cover', 'Get cover'], ['mine', 'My cover']] },
   { label: 'Pool', items: [['pool', 'Underwrite']] },
@@ -282,6 +283,10 @@ function CoverTab({ groups, pool, signer, lastPost, onConnect, run, onBought }: 
           <div><div className="tabular text-2xl font-medium tracking-tight">{pool ? usd(pool.totalAssets, 0) : '…'}</div><div className="label-mono">Underwriting pool</div></div>
           <div><div className="tabular text-2xl font-medium tracking-tight">{pool ? pool.policyCount : '…'}</div><div className="label-mono">Policies written</div></div>
         </div>
+        <a href={VIDEO_ID ? `https://youtu.be/${VIDEO_ID}` : './kelvin-demo.mp4'} target="_blank" rel="noreferrer" className="mt-7 inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-[15px] font-medium">
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[9px] text-white">▶</span>
+          Watch the demo
+        </a>
         </div>
         <div className="-mr-5 hidden sm:block xl:-mt-4" aria-hidden="true">
           <HeroDemo />
@@ -720,6 +725,15 @@ function HowTab({ pool, marketCount, lastPost }: { pool: Pool | null; marketCoun
     <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
       <div>
         <h2 className="font-display text-3xl">How Kelvin works</h2>
+        <div className="card mt-5 overflow-hidden">
+          <div className="aspect-video">
+            {VIDEO_ID ? (
+              <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}`} title="Kelvin demo" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
+            ) : (
+              <video className="h-full w-full" src="./kelvin-demo.mp4" controls preload="metadata" />
+            )}
+          </div>
+        </div>
         <ol className="mt-5 space-y-3">
           {steps.map(([t, d], i) => (
             <li key={t} className="flex gap-4 card p-5">
