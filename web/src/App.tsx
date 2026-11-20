@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BaseError, ContractFunctionRevertedError, formatEther, type Hex } from 'viem'
 import { vaultAbi } from './lib/abi'
+import HeroDemo from './HeroDemo'
 import {
   EXPLORER, ORACLE, VAULT, addressUrl, browserSigner, demoSigner, hasBrowserWallet, hasDemoWallet, publicClient, txUrl,
   type Signer,
@@ -11,6 +12,11 @@ import {
 } from './lib/markets'
 
 type Tab = 'cover' | 'mine' | 'pool' | 'how'
+const NAV: { label: string; items: [Tab, string][] }[] = [
+  { label: 'Cover', items: [['cover', 'Get cover'], ['mine', 'My cover']] },
+  { label: 'Pool', items: [['pool', 'Underwrite']] },
+  { label: 'About', items: [['how', 'How it works']] },
+]
 type Toast = { id: number; tone: 'ok' | 'err' | 'wait'; text: string; hash?: string }
 
 const ERRORS: Record<string, string> = {
@@ -130,34 +136,57 @@ export default function App() {
 
   return (
     <div className="min-h-full">
-      <header className="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-5 py-3">
-          <button onClick={() => setTab('cover')} className="flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold">Kelvin</span>
-            <span className="hidden text-xs text-muted sm:inline">weather cover, priced by prediction markets</span>
-          </button>
-          <nav className="ml-auto flex items-center gap-1 text-sm">
-            {([['cover', 'Get cover'], ['mine', `My cover${mine.length ? ` (${mine.length})` : ''}`], ['pool', 'Underwrite'], ['how', 'How it works']] as [Tab, string][]).map(([k, label]) => (
-              <button key={k} onClick={() => setTab(k)} className={`rounded-full px-3 py-1.5 transition ${tab === k ? 'bg-ink text-white' : 'text-muted hover:text-ink'}`}>
-                {label}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col px-3 py-5 lg:flex">
+        <button onClick={() => setTab('cover')} className="mb-7 flex items-center gap-2.5 px-2 text-left">
+          <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-ink text-[15px] font-semibold text-white">K</span>
+          <span className="text-[17px] font-semibold tracking-tight">Kelvin</span>
+        </button>
+        {NAV.map((group) => (
+          <div key={group.label} className="mb-5">
+            <div className="mb-1 px-3 text-[13px] text-muted">{group.label}</div>
+            {group.items.map(([k, label]) => (
+              <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined} className="nav-item flex items-center justify-between">
+                <span>{label}</span>
+                {k === 'mine' && mine.length > 0 && <span className="label-mono tabular">{mine.length}</span>}
               </button>
             ))}
+          </div>
+        ))}
+        <div className="mt-auto px-3">
+          <div className="label-mono">Arc Testnet</div>
+          <a className="label-mono underline" href={addressUrl(VAULT)} target="_blank" rel="noreferrer">View the vault contract</a>
+        </div>
+      </aside>
+
+      <header className="sticky top-0 z-20 bg-paper/85 backdrop-blur lg:pl-[248px]">
+        <div className="mx-auto flex max-w-[1040px] items-center gap-3 px-5 py-4">
+          <button onClick={() => setTab('cover')} className="flex items-center gap-2 lg:hidden">
+            <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-ink text-[15px] font-semibold text-white">K</span>
+          </button>
+          <nav className="flex items-center gap-1 overflow-x-auto text-sm lg:hidden">
+            {NAV.flatMap((g) => g.items).map(([k, label]) => (
+              <button key={k} onClick={() => setTab(k)} className={`whitespace-nowrap rounded-full px-3 py-1.5 ${tab === k ? 'bg-wash font-medium text-ink' : 'text-muted'}`}>{label}</button>
+            ))}
           </nav>
-          <WalletButton signer={signer} balance={balance} onConnect={connect} onDisconnect={() => { setSigner(null); setBalance(null) }} />
+          <div className="ml-auto">
+            <WalletButton signer={signer} balance={balance} onConnect={connect} onDisconnect={() => { setSigner(null); setBalance(null) }} />
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 pb-24 pt-8">
+      <div className="lg:pl-[248px]">
+      <main className="mx-auto max-w-[1040px] px-5 pb-24 pt-6">
         {loadError && <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Could not reach Arc testnet: {loadError}</div>}
         {tab === 'cover' && <CoverTab groups={groups} pool={pool} signer={signer} lastPost={lastPost} onConnect={connect} run={run} onBought={() => setTab('mine')} />}
         {tab === 'mine' && <MineTab policies={mine} signer={signer} groups={groups} marketMap={marketMap} run={run} onConnect={connect} />}
         {tab === 'pool' && <PoolTab pool={pool} signer={signer} shares={shares} balance={balance} policies={policies} groups={groups} marketMap={marketMap} run={run} onConnect={connect} />}
         {tab === 'how' && <HowTab pool={pool} marketCount={markets.length} lastPost={lastPost} />}
       </main>
+      </div>
 
       <div className="fixed bottom-5 right-5 z-30 flex w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col gap-2">
         {toasts.map((t) => (
-          <div key={t.id} className={`rise rounded-xl border px-4 py-3 text-sm shadow-lg ${t.tone === 'ok' ? 'border-emerald-200 bg-white' : t.tone === 'err' ? 'border-red-200 bg-white' : 'border-line bg-white'}`}>
+          <div key={t.id} className={"rise card px-4 py-3 text-sm !shadow-[0_0_0_1px_rgb(0_0_0/0.06),0_8px_24px_rgb(0_0_0/0.08)]"}>
             <div className="flex items-start gap-2">
               <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${t.tone === 'ok' ? 'bg-emerald-500' : t.tone === 'err' ? 'bg-red-500' : 'live-dot bg-heat'}`} />
               <div>
@@ -178,7 +207,7 @@ function WalletButton({ signer, balance, onConnect, onDisconnect }: { signer: Si
   const [open, setOpen] = useState(false)
   if (signer) {
     return (
-      <button onClick={onDisconnect} title="Disconnect" className="flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-sm">
+      <button onClick={onDisconnect} title="Disconnect" className="card flex items-center gap-2 !rounded-full px-3.5 py-2 text-sm">
         <span className="h-2 w-2 rounded-full bg-emerald-500" />
         <span className="tabular font-medium">{balance === null ? '…' : usd(balance)}</span>
         <span className="text-muted">{signer.kind === 'demo' ? 'Demo wallet' : short(signer.address)}</span>
@@ -187,9 +216,9 @@ function WalletButton({ signer, balance, onConnect, onDisconnect }: { signer: Si
   }
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="rounded-full bg-heat px-4 py-1.5 text-sm font-semibold text-white hover:bg-ember">Sign in</button>
+      <button onClick={() => setOpen((o) => !o)} className="btn-primary rounded-full px-4 py-2 text-[15px] font-medium">Sign in</button>
       {open && (
-        <div className="rise absolute right-0 mt-2 w-72 rounded-2xl border border-line bg-white p-2 shadow-xl">
+        <div className="rise card absolute right-0 mt-2 w-72 origin-top-right p-2">
           {hasDemoWallet && (
             <button onClick={() => { setOpen(false); onConnect('demo') }} className="w-full rounded-xl px-3 py-2.5 text-left hover:bg-paper">
               <div className="text-sm font-semibold">Use the demo wallet</div>
@@ -209,8 +238,8 @@ function WalletButton({ signer, balance, onConnect, onDisconnect }: { signer: Si
 function SignInPrompt({ onConnect, verb }: { onConnect: (k: 'demo' | 'browser') => void; verb: string }) {
   return (
     <div className="flex flex-col gap-2">
-      {hasDemoWallet && <button onClick={() => onConnect('demo')} className="w-full rounded-xl bg-heat py-3 font-semibold text-white hover:bg-ember">{verb} with the demo wallet</button>}
-      <button onClick={() => onConnect('browser')} className="w-full rounded-xl border border-line bg-white py-2.5 text-sm font-medium hover:bg-paper">Connect my own wallet</button>
+      {hasDemoWallet && <button onClick={() => onConnect('demo')} className="btn-primary w-full rounded-full py-3 font-medium">{verb} with the demo wallet</button>}
+      <button onClick={() => onConnect('browser')} className="w-full rounded-full border border-line bg-white py-2.5 text-sm font-medium">Connect my own wallet</button>
     </div>
   )
 }
@@ -236,30 +265,32 @@ function CoverTab({ groups, pool, signer, lastPost, onConnect, run, onBought }: 
 
   return (
     <div>
-      <section className="mb-8 grid items-end gap-6 md:grid-cols-[1.4fr_1fr]">
+      <section className="mb-12 grid items-start gap-x-8 gap-y-8 pt-6 xl:grid-cols-[minmax(0,1fr)_500px]">
         <div>
-          <h1 className="font-display text-4xl font-bold leading-[1.05] sm:text-5xl">
-            Bad weather shouldn’t <span className="text-heat">break your week.</span>
-          </h1>
-          <p className="mt-3 max-w-xl text-lg text-muted">
-            Pick the weather that would hurt your business tomorrow. Pay a few dollars today. If it happens, Kelvin pays you in digital dollars. There is no claim to file.
-          </p>
+        <div className="label-mono flex items-center gap-2">
+          <span className="live-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Live odds from Gemini Prediction Markets, updated {lastPost ? ago(lastPost) : '…'}
         </div>
-        <div className="rounded-2xl border border-line bg-white p-4 text-sm">
-          <div className="flex items-center gap-2 font-medium">
-            <span className="live-dot h-2 w-2 rounded-full bg-emerald-500" />
-            Live odds from Gemini Prediction Markets
-          </div>
-          <div className="mt-1 text-muted">
-            {groups.reduce((n, g) => n + g.markets.length, 0)} markets mirrored on Arc · updated {lastPost ? ago(lastPost) : '…'}
-            {pool && <> · {usd(pool.totalAssets, 0)} underwriting pool</>}
-          </div>
+        <h1 className="font-display mt-4 text-[40px] leading-[1.08] sm:text-[46px]">
+          Bad weather shouldn’t break your week
+        </h1>
+        <p className="mt-5 text-lg leading-relaxed text-[#63635e]">
+          Pick the weather that would hurt your business tomorrow. Pay a few dollars today. If it happens, Kelvin pays you in digital dollars. There is no claim to file.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-x-10 gap-y-4">
+          <div><div className="tabular text-2xl font-medium tracking-tight">{groups.reduce((n, g) => n + g.markets.length, 0)}</div><div className="label-mono">Gemini markets on Arc</div></div>
+          <div><div className="tabular text-2xl font-medium tracking-tight">{pool ? usd(pool.totalAssets, 0) : '…'}</div><div className="label-mono">Underwriting pool</div></div>
+          <div><div className="tabular text-2xl font-medium tracking-tight">{pool ? pool.policyCount : '…'}</div><div className="label-mono">Policies written</div></div>
+        </div>
+        </div>
+        <div className="-mr-5 hidden sm:block xl:-mt-4" aria-hidden="true">
+          <HeroDemo />
         </div>
       </section>
 
-      <div className="mb-5 flex flex-wrap gap-2 text-sm">
+      <div className="mb-6 inline-flex flex-wrap gap-1 rounded-full bg-wash p-1 text-sm">
         {([['weather', 'Daily temperature'], ['gas', 'Natural gas price'], ['crypto', '5-minute Bitcoin (settles in minutes)']] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setMode(k)} className={`rounded-full border px-3.5 py-1.5 ${mode === k ? 'border-ink bg-ink text-white' : 'border-line bg-white text-muted hover:text-ink'}`}>{label}</button>
+          <button key={k} onClick={() => setMode(k)} className={`rounded-full px-3.5 py-1.5 ${mode === k ? 'bg-white font-medium text-ink shadow-[0_0_0_1px_rgb(0_0_0/0.06),0_1px_2px_rgb(0_0_0/0.06)]' : 'text-muted'}`}>{label}</button>
         ))}
       </div>
 
@@ -270,7 +301,7 @@ function CoverTab({ groups, pool, signer, lastPost, onConnect, run, onBought }: 
 }
 
 function Empty({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-line bg-white/60 p-10 text-center text-muted">{text}</div>
+  return <div className="rounded-[20px] border border-dashed border-line p-10 text-center text-muted">{text}</div>
 }
 
 function useQuote(legs: Hex[], payout: bigint) {
@@ -320,6 +351,7 @@ function QuoteCard({ headline, sub, legs, group, pool, signer, onConnect, run, o
   const { quote, error } = useQuote(legs, payout)
   const [busy, setBusy] = useState(false)
   const chips = [2, 5, 10, 25, 50].filter((c) => c <= Math.max(capacity, 2))
+  if (capacity > 2 && !chips.includes(capacity)) chips.push(capacity)
 
   async function buy() {
     if (!quote) return
@@ -336,9 +368,9 @@ function QuoteCard({ headline, sub, legs, group, pool, signer, onConnect, run, o
   }
 
   return (
-    <div className="rounded-3xl border border-line bg-white p-6 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted">Your cover</div>
-      <div className="mt-1 font-display text-2xl font-bold leading-tight">{legs.length ? headline : 'Pick a trigger'}</div>
+    <div className="card p-6">
+      <div className="label-mono">Your cover</div>
+      <div className="mt-1 font-display text-2xl leading-tight">{legs.length ? headline : 'Pick a trigger'}</div>
       <div className="text-sm text-muted">{sub}</div>
 
       <div className="mt-5 text-sm font-medium">If it happens, pay me</div>
@@ -349,12 +381,12 @@ function QuoteCard({ headline, sub, legs, group, pool, signer, onConnect, run, o
       </div>
       <div className="mt-1 text-xs text-muted">Testnet pool: up to ${capacity} available on this event right now.</div>
 
-      <div className="mt-5 rounded-2xl bg-paper p-4">
+      <div className="mt-5 rounded-2xl bg-wash p-4">
         {quote ? (
           <>
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-muted">You pay today</span>
-              <span className="tabular font-display text-3xl font-bold">{usd(quote.premium)}</span>
+              <span className="tabular font-display text-3xl">{usd(quote.premium)}</span>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
               <span className="text-sm text-muted">You receive if it happens</span>
@@ -371,7 +403,7 @@ function QuoteCard({ headline, sub, legs, group, pool, signer, onConnect, run, o
 
       <div className="mt-4">
         {signer ? (
-          <button onClick={buy} disabled={!quote || busy} className="w-full rounded-xl bg-heat py-3.5 text-base font-semibold text-white hover:bg-ember disabled:opacity-40">
+          <button onClick={buy} disabled={!quote || busy} className="btn-primary w-full rounded-full py-3.5 text-base font-medium disabled:opacity-40">
             {busy ? 'Confirming on Arc…' : quote ? `Get covered for ${usd(quote.premium)}` : 'Get covered'}
           </button>
         ) : (
@@ -420,8 +452,9 @@ function WeatherCover({ groups, cities, pool, signer, onConnect, run, onBought }
   return (
     <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
       <div className="space-y-5">
-        <div className="rounded-3xl border border-line bg-white p-6">
-          <div className="text-sm font-semibold">1 · What are you protecting?</div>
+        <div className="card p-6">
+          <div className="label-mono">01</div>
+          <div className="font-display mt-1 text-xl">What are you protecting?</div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {SCENARIOS.map((s) => (
               <button key={s.id} onClick={() => { setScenario(s); setThreshold(null) }} className={`rounded-2xl border p-3 text-left transition ${scenario.id === s.id ? 'border-heat bg-orange-50' : 'border-line hover:border-ink'}`}>
@@ -432,13 +465,14 @@ function WeatherCover({ groups, cities, pool, signer, onConnect, run, onBought }
           </div>
         </div>
 
-        <div className="rounded-3xl border border-line bg-white p-6">
-          <div className="text-sm font-semibold">2 · Where and when?</div>
+        <div className="card p-6">
+          <div className="label-mono">02</div>
+          <div className="font-display mt-1 text-xl">Where and when?</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {cities.map((c) => {
               const g = groups.find((x) => x.cityCode === c)
               return (
-                <button key={c} onClick={() => { setCity(c); setTicker(''); setThreshold(null) }} className={`rounded-full border px-3.5 py-1.5 text-sm ${group?.cityCode === c ? 'border-ink bg-ink text-white' : 'border-line hover:border-ink'}`}>{g?.city ?? c}</button>
+                <button key={c} onClick={() => { setCity(c); setTicker(''); setThreshold(null) }} className={`rounded-full border px-3.5 py-1.5 text-sm ${group?.cityCode === c ? 'border-transparent bg-ink text-white' : 'border-line bg-white'}`}>{g?.city ?? c}</button>
               )
             })}
           </div>
@@ -452,9 +486,10 @@ function WeatherCover({ groups, cities, pool, signer, onConnect, run, onBought }
         </div>
 
         {group && (
-          <div className="rounded-3xl border border-line bg-white p-6">
+          <div className="card p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div className="text-sm font-semibold">3 · Pay me if {group.city}’s high is…</div>
+              <div><div className="label-mono">03</div>
+              <div className="font-display mt-1 text-xl">Pay me if {group.city}’s high is…</div></div>
               <div className="text-xs text-muted">What the market thinks {group.dayLabel}’s high will be. Tap a bar to move the trigger.</div>
             </div>
             <div className="mt-6 flex h-44 items-end gap-2">
@@ -463,8 +498,8 @@ function WeatherCover({ groups, cities, pool, signer, onConnect, run, onBought }
                 const h = Math.max(4, (b.market.probBps / maxProb) * 100)
                 return (
                   <button key={b.market.id} onClick={() => setThreshold(dir === 'hot' ? b.low : b.high)} className="group flex h-full flex-1 flex-col items-center justify-end gap-1" title={b.market.symbol}>
-                    <span className={`tabular text-xs font-semibold ${on ? (dir === 'hot' ? 'text-ember' : 'text-frost') : 'text-muted'}`}>{fresh(b.market) ? pct(b.market.probBps) : '—'}</span>
-                    <span style={{ height: `${h}%` }} className={`w-full rounded-t-lg transition-all ${on ? (dir === 'hot' ? 'bg-heat' : 'bg-frost') : 'bg-stone-200 group-hover:bg-stone-300'}`} />
+                    <span className={`tabular text-xs font-semibold ${on ? 'text-ink' : 'text-muted'}`}>{fresh(b.market) ? pct(b.market.probBps) : '—'}</span>
+                    <span style={{ height: `${h}%` }} className={`w-full rounded-t-[10px] transition-[height,background-color] duration-200 ease-out ${on ? 'bg-heat' : 'bg-[#e9e8e4] group-hover:bg-[#dddcd7]'}`} />
                   </button>
                 )
               })}
@@ -477,7 +512,7 @@ function WeatherCover({ groups, cities, pool, signer, onConnect, run, onBought }
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <span className={`inline-block h-2.5 w-2.5 rounded-sm ${dir === 'hot' ? 'bg-heat' : 'bg-frost'}`} /> You are covered across the highlighted range.
+              <span className={`inline-block h-2.5 w-2.5 rounded-sm bg-heat`} /> You are covered across the highlighted range.
               <span>Measured by the National Weather Service; resolved by Gemini event <a className="underline" href={`https://www.gemini.com/prediction-markets`} target="_blank" rel="noreferrer">{group.ticker}</a>.</span>
             </div>
           </div>
@@ -506,7 +541,7 @@ function LadderCover({ groups, mode, pool, signer, onConnect, run, onBought }: {
   return (
     <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
       <div className="space-y-5">
-        <div className="rounded-3xl border border-line bg-white p-6">
+        <div className="card p-6">
           <div className="text-sm font-semibold">{mode === 'gas' ? 'Natural gas sets the price of power in Texas. Cover a spike.' : 'A market that resolves in minutes, so you can watch a policy settle.'}</div>
           <p className="mt-1 text-sm text-muted">
             {mode === 'gas'
@@ -515,7 +550,7 @@ function LadderCover({ groups, mode, pool, signer, onConnect, run, onBought }: {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {usable.map((g) => (
-              <button key={g.ticker} onClick={() => { setTicker(g.ticker); setPick('') }} className={`rounded-full border px-3.5 py-1.5 text-sm ${group.ticker === g.ticker ? 'border-ink bg-ink text-white' : 'border-line hover:border-ink'}`}>
+              <button key={g.ticker} onClick={() => { setTicker(g.ticker); setPick('') }} className={`rounded-full border px-3.5 py-1.5 text-sm ${group.ticker === g.ticker ? 'border-transparent bg-ink text-white' : 'border-line bg-white'}`}>
                 {mode === 'gas' ? `Week ending ${g.dayLabel}` : `Resolves ${g.dayLabel}`}
               </button>
             ))}
@@ -551,7 +586,7 @@ function PolicyRow({ p, groups, marketMap, showHolder, action }: { p: Policy; gr
   const d = describeLegs(p.legs, marketMap, groups)
   const st = STATUS[p.status] ?? STATUS[1]
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-line bg-white px-5 py-4">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 card px-5 py-4">
       <div className="min-w-[14rem] flex-1">
         <div className="font-semibold">{d.headline}</div>
         <div className="text-xs text-muted">
@@ -578,12 +613,12 @@ function MineTab({ policies, signer, groups, marketMap, run, onConnect }: { poli
       .catch(() => {})
   }, [policies])
 
-  if (!signer) return <div className="mx-auto max-w-md pt-10"><h2 className="mb-4 text-center font-display text-3xl font-bold">Your cover</h2><SignInPrompt onConnect={onConnect} verb="See cover" /></div>
+  if (!signer) return <div className="mx-auto max-w-md pt-10"><h2 className="mb-4 text-center font-display text-3xl">Your cover</h2><SignInPrompt onConnect={onConnect} verb="See cover" /></div>
   const paid = policies.filter((p) => p.status === 2).reduce((a, p) => a + p.payout, 0n)
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h2 className="font-display text-3xl font-bold">Your cover</h2>
+        <h2 className="font-display text-3xl">Your cover</h2>
         <div className="text-sm text-muted">{policies.filter((p) => p.status === 1).length} active · {usd(paid)} paid out to you</div>
       </div>
       {policies.length === 0 ? <Empty text="No cover yet. Pick a trigger on the Get cover tab." /> : (
@@ -606,9 +641,9 @@ function MineTab({ policies, signer, groups, marketMap, run, onConnect }: { poli
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-5">
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted">{label}</div>
-      <div className="tabular mt-1 font-display text-3xl font-bold">{value}</div>
+    <div className="card p-5">
+      <div className="label-mono">{label}</div>
+      <div className="tabular mt-1 font-display text-3xl">{value}</div>
       {sub && <div className="text-xs text-muted">{sub}</div>}
     </div>
   )
@@ -626,7 +661,7 @@ function PoolTab({ pool, signer, shares, balance, policies, groups, marketMap, r
   return (
     <div>
       <div className="mb-6 max-w-2xl">
-        <h2 className="font-display text-3xl font-bold">Underwrite the weather</h2>
+        <h2 className="font-display text-3xl">Underwrite the weather</h2>
         <p className="mt-2 text-muted">Deposit USDC and take the other side of every cover Kelvin sells. You earn the premiums; you pay when a trigger hits. Each policy is priced at Gemini’s market odds plus a spread, and is fully collateralised from sale to settlement.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -637,9 +672,9 @@ function PoolTab({ pool, signer, shares, balance, policies, groups, marketMap, r
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.6fr]">
-        <div className="rounded-3xl border border-line bg-white p-6">
+        <div className="card p-6">
           <div className="text-sm font-semibold">Your position</div>
-          <div className="tabular mt-1 font-display text-3xl font-bold">{usd(mineValue)}</div>
+          <div className="tabular mt-1 font-display text-3xl">{usd(mineValue)}</div>
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-line px-3 py-2">
             <span className="text-muted">$</span>
             <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" className="tabular w-full bg-transparent text-lg font-semibold outline-none" />
@@ -647,12 +682,12 @@ function PoolTab({ pool, signer, shares, balance, policies, groups, marketMap, r
           </div>
           {signer ? (
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button disabled={n <= 0} onClick={() => run(`$${n} deposited`, (s) => s.client.writeContract({ address: VAULT, abi: vaultAbi, functionName: 'deposit', value: toWei(n), account: s.client.account!, chain: s.client.chain }))} className="rounded-xl bg-ink py-2.5 text-sm font-semibold text-white disabled:opacity-40">Deposit</button>
+              <button disabled={n <= 0} onClick={() => run(`$${n} deposited`, (s) => s.client.writeContract({ address: VAULT, abi: vaultAbi, functionName: 'deposit', value: toWei(n), account: s.client.account!, chain: s.client.chain }))} className="rounded-full bg-ink py-2.5 text-sm font-medium text-white disabled:opacity-40">Deposit</button>
               <button disabled={n <= 0 || mineValue === 0n} onClick={() => {
                 const want = toWei(n)
                 const sh = want >= mineValue ? shares : (shares * want) / mineValue
                 return run(`$${n} withdrawn`, (s) => s.client.writeContract({ address: VAULT, abi: vaultAbi, functionName: 'withdraw', args: [sh], account: s.client.account!, chain: s.client.chain }))
-              }} className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-40">Withdraw</button>
+              }} className="rounded-full border border-line py-2.5 text-sm font-medium disabled:opacity-40">Withdraw</button>
             </div>
           ) : <div className="mt-3"><SignInPrompt onConnect={onConnect} verb="Underwrite" /></div>}
           <div className="mt-3 text-xs text-muted">Wallet balance {balance === null ? '—' : usd(balance)}. Premiums are added to the share price only when a policy settles, so nobody can deposit late and skim premiums they took no risk for.</div>
@@ -684,18 +719,18 @@ function HowTab({ pool, marketCount, lastPost }: { pool: Pool | null; marketCoun
   return (
     <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
       <div>
-        <h2 className="font-display text-3xl font-bold">How Kelvin works</h2>
+        <h2 className="font-display text-3xl">How Kelvin works</h2>
         <ol className="mt-5 space-y-3">
           {steps.map(([t, d], i) => (
-            <li key={t} className="flex gap-4 rounded-2xl border border-line bg-white p-5">
-              <span className="font-display text-2xl font-bold text-heat">{i + 1}</span>
+            <li key={t} className="flex gap-4 card p-5">
+              <span className="label-mono pt-1">{String(i + 1).padStart(2, "0")}</span>
               <div><div className="font-semibold">{t}</div><div className="text-sm text-muted">{d}</div></div>
             </li>
           ))}
         </ol>
       </div>
       <div className="space-y-4">
-        <div className="rounded-3xl border border-line bg-white p-6 text-sm">
+        <div className="card p-6 text-sm">
           <div className="font-semibold">On-chain, on Arc testnet</div>
           <dl className="mt-3 space-y-3">
             <div><dt className="text-xs text-muted">KelvinVault: sells and settles cover</dt><dd><a className="break-all font-mono text-xs text-frost underline" href={addressUrl(VAULT)} target="_blank" rel="noreferrer">{VAULT}</a></dd></div>
@@ -704,7 +739,7 @@ function HowTab({ pool, marketCount, lastPost }: { pool: Pool | null; marketCoun
           </dl>
         </div>
         {pool && (
-          <div className="rounded-3xl border border-line bg-white p-6 text-sm">
+          <div className="card p-6 text-sm">
             <div className="font-semibold">Risk limits enforced by the contract</div>
             <ul className="mt-3 space-y-1.5 text-muted">
               <li>Spread: {pct(pool.baseSpreadBps, 1)} + up to {pct(pool.utilSpreadBps, 1)} as the pool fills</li>
