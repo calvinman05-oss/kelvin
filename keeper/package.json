@@ -1,0 +1,12 @@
+{
+  "name": "kelvin-keeper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "once": "node keeper.mjs --once",
+    "loop": "node keeper.mjs --loop"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  }
+}
